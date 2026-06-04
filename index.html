@@ -4,30 +4,6 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>PreferHub — Bulk Email Sender</title>
-<script>
-// Load MSAL from multiple CDNs with fallback
-(function() {
-  const cdns = [
-    'https://cdnjs.cloudflare.com/ajax/libs/microsoft-authentication-library/2.38.3/msal-browser.min.js',
-    'https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js',
-    'https://unpkg.com/@azure/msal-browser@2.38.3/lib/msal-browser.min.js',
-    'https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js'
-  ];
-  let idx = 0;
-  function tryLoad() {
-    if(idx >= cdns.length) {
-      document.getElementById('msal-error').style.display='block';
-      return;
-    }
-    const s = document.createElement('script');
-    s.src = cdns[idx++];
-    s.onload = () => { window._msalLoaded = true; };
-    s.onerror = tryLoad;
-    document.head.appendChild(s);
-  }
-  tryLoad();
-})();
-</script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -42,14 +18,13 @@
   body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 15px; line-height: 1.6; min-height: 100vh; }
   .app { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
   .sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 2rem 1.5rem; display: flex; flex-direction: column; gap: 2rem; }
-  .logo-name { font-size: 18px; font-weight: 600; color: var(--accent); letter-spacing: -0.3px; }
+  .logo-name { font-size: 18px; font-weight: 600; color: var(--accent); }
   .logo-sub { font-size: 11px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; }
   .steps-nav { display: flex; flex-direction: column; gap: 4px; }
   .step-btn { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--radius); border: none; background: transparent; color: var(--muted); font-family: var(--font); font-size: 14px; cursor: pointer; text-align: left; transition: all 0.15s; }
   .step-btn:hover { color: var(--text); background: var(--surface2); }
   .step-btn.active { color: var(--accent); background: rgba(201,169,110,0.1); font-weight: 500; }
   .step-num { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid currentColor; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
-  .step-btn.done .step-num { background: var(--success); border-color: var(--success); color: #fff; }
   .stats-box { margin-top: auto; background: var(--surface2); border-radius: var(--radius); padding: 1rem; display: flex; flex-direction: column; gap: 8px; }
   .stat-row { display: flex; justify-content: space-between; font-size: 13px; }
   .stat-label { color: var(--muted); }
@@ -63,11 +38,7 @@
   .page-desc { color: var(--muted); font-size: 14px; margin-bottom: 2rem; }
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.25rem; }
   .card-label { font-size: 12px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
-  input[type=text], input[type=email], input[type=number], textarea, select {
-    width: 100%; background: var(--surface2); border: 1px solid var(--border);
-    border-radius: var(--radius); color: var(--text); font-family: var(--font);
-    font-size: 14px; padding: 10px 14px; outline: none; transition: border-color 0.15s;
-  }
+  input[type=text], input[type=email], input[type=number], textarea, select { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-family: var(--font); font-size: 14px; padding: 10px 14px; outline: none; transition: border-color 0.15s; }
   input:focus, textarea:focus, select:focus { border-color: var(--accent); }
   textarea { resize: vertical; min-height: 220px; line-height: 1.7; font-family: var(--mono); font-size: 13px; }
   .upload-zone { border: 1.5px dashed var(--border2); border-radius: var(--radius-lg); padding: 2.5rem; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; }
@@ -88,7 +59,7 @@
   .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
   .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 1.25rem; align-items: center; }
   .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .alert { padding: 12px 16px; border-radius: var(--radius); font-size: 13px; margin-bottom: 1rem; display: flex; align-items: flex-start; gap: 8px; }
+  .alert { padding: 12px 16px; border-radius: var(--radius); font-size: 13px; margin-bottom: 1rem; display: flex; align-items: flex-start; gap: 8px; line-height: 1.5; }
   .alert-warning { background: rgba(224,168,74,0.12); border: 1px solid rgba(224,168,74,0.3); color: var(--warning); }
   .alert-success { background: rgba(76,175,125,0.12); border: 1px solid rgba(76,175,125,0.3); color: var(--success); }
   .alert-info { background: rgba(91,156,246,0.12); border: 1px solid rgba(91,156,246,0.3); color: var(--info); }
@@ -105,7 +76,7 @@
   .log-err { color: var(--danger); }
   .log-info { color: var(--muted); }
   .auth-box { background: rgba(201,169,110,0.05); border: 1px solid rgba(201,169,110,0.2); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.25rem; }
-  .auth-status { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+  .auth-status { display: flex; align-items: center; gap: 10px; font-size: 14px; margin-bottom: 1rem; }
   .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
   .dot-grey { background: var(--muted); }
   .dot-green { background: var(--success); }
@@ -178,27 +149,27 @@ PreferHub</textarea>
     <!-- PAGE 2: UPLOAD -->
     <div class="page" id="page-1">
       <div class="page-title">Upload contacts</div>
-      <div class="page-desc">Works with any CSV — Apollo exports, Excel exports, custom files. Column names are auto-detected.</div>
+      <div class="page-desc">Works with any CSV — Apollo exports, Excel exports, custom files.</div>
       <div class="upload-zone" id="upload-zone">
         <input type="file" accept=".csv" onchange="loadCSV(this)" />
         <div style="font-size:32px;margin-bottom:10px">📂</div>
         <div style="font-weight:500;margin-bottom:4px" id="upload-title">Drop your CSV here or click to browse</div>
-        <div style="font-size:13px;color:var(--muted)" id="upload-hint">Supports Apollo export or any custom CSV</div>
+        <div style="font-size:13px;color:var(--muted)" id="upload-hint">Apollo export or any custom CSV</div>
       </div>
       <div id="upload-result" style="display:none;margin-top:1rem">
         <div class="alert alert-success" id="upload-msg"></div>
-        <div class="card"><div class="card-label">First 5 contacts preview</div><div id="preview-table"></div></div>
+        <div class="card"><div class="card-label">First 5 contacts</div><div id="preview-table"></div></div>
       </div>
       <div class="btn-row">
         <button class="btn btn-outline" onclick="goTo(0)">← Back</button>
-        <button class="btn btn-gold" onclick="goTo(2)">Next: Preview Emails →</button>
+        <button class="btn btn-gold" onclick="goTo(2)">Next: Preview →</button>
       </div>
     </div>
 
     <!-- PAGE 3: PREVIEW -->
     <div class="page" id="page-2">
       <div class="page-title">Preview emails</div>
-      <div class="page-desc">Browse each personalised email before sending anything.</div>
+      <div class="page-desc">Browse each personalised email before sending.</div>
       <div class="card">
         <div class="preview-nav">
           <div>
@@ -216,42 +187,37 @@ PreferHub</textarea>
       </div>
       <div class="btn-row">
         <button class="btn btn-outline" onclick="goTo(1)">← Back</button>
-        <button class="btn btn-gold" onclick="goTo(3)">Looks good → Go to Send</button>
+        <button class="btn btn-gold" onclick="goTo(3)">Looks good → Send</button>
       </div>
     </div>
 
     <!-- PAGE 4: SEND -->
     <div class="page" id="page-3">
       <div class="page-title">Send emails</div>
-      <div class="page-desc">Sign in with your Outlook account, test first, then send to everyone automatically.</div>
+      <div class="page-desc">Sign in with Microsoft, test first, then send to everyone automatically.</div>
 
-      <!-- Auth -->
       <div class="auth-box">
-        <div class="alert alert-danger" id="msal-error" style="display:none">
-        ⚠️ Auth library blocked by your network. Try opening this page on a different network (mobile hotspot) or ask your IT team to whitelist <strong>alcdn.msauth.net</strong>
-      </div>
-      <div class="card-label" style="margin-bottom:12px">Step 1 — Sign in with your Outlook account</div>
+        <div class="card-label" style="margin-bottom:12px">Step 1 — Sign in with Microsoft</div>
         <div class="auth-status" id="auth-status">
           <div class="dot dot-grey" id="auth-dot"></div>
           <span id="auth-text">Not signed in</span>
         </div>
-        <div class="btn-row">
+        <div class="btn-row" style="margin-top:0">
           <button class="btn btn-gold" id="signin-btn" onclick="signIn()">🔐 Sign in with Microsoft</button>
           <button class="btn btn-outline" id="signout-btn" onclick="signOut()" style="display:none">Sign out</button>
         </div>
       </div>
 
-      <!-- Test -->
       <div class="card">
         <div class="card-label">Step 2 — Test send to your manager</div>
-        <div style="font-size:13px;color:var(--muted);margin-bottom:1rem">Sends one real email so your manager can approve before bulk sending.</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:1rem">Sends one real email for approval before bulk sending.</div>
         <div class="two-col">
           <div>
             <div class="card-label">Manager's email</div>
             <input type="email" id="test-email" placeholder="manager@preferhub.com" />
           </div>
           <div>
-            <div class="card-label">Preview as this contact</div>
+            <div class="card-label">Preview as</div>
             <select id="test-contact"><option>— load CSV first —</option></select>
           </div>
         </div>
@@ -262,32 +228,29 @@ PreferHub</textarea>
 
       <hr class="divider" />
 
-      <!-- Bulk send -->
       <div class="card">
         <div class="card-label">Step 3 — Send to all contacts</div>
-        <div style="font-size:13px;color:var(--muted);margin-bottom:1rem">Sends one personalised email per contact automatically. No tabs, no clicking.</div>
-
-        <div class="alert alert-warning" id="notauth-warn">⚠️ Please sign in with Microsoft first before sending.</div>
-
+        <div style="font-size:13px;color:var(--muted);margin-bottom:1rem">Sends all emails automatically. No tabs, no clicking.</div>
+        <div class="alert alert-warning" id="notauth-warn">⚠️ Sign in with Microsoft first.</div>
         <div class="two-col" style="margin-bottom:1rem">
           <div>
-            <div class="card-label">Delay between emails (ms)</div>
-            <input type="number" id="send-delay" value="1000" min="500" max="5000" />
-            <div style="font-size:12px;color:var(--muted);margin-top:4px">1000ms = 1 second gap. Recommended: 1000–2000</div>
+            <div class="card-label">Delay between emails</div>
+            <select id="send-delay">
+              <option value="1000">1 second (recommended)</option>
+              <option value="2000">2 seconds (safer)</option>
+              <option value="500">0.5 seconds (fast)</option>
+            </select>
           </div>
           <div>
-            <div class="card-label">Ready to send</div>
+            <div class="card-label">Contacts ready</div>
             <div style="font-size:28px;font-weight:600;color:var(--accent);font-family:var(--mono)" id="ready-count">0</div>
-            <div style="font-size:12px;color:var(--muted)">contacts with email</div>
           </div>
         </div>
-
         <div class="btn-row">
           <button class="btn btn-success" id="send-all-btn" onclick="sendAll()" disabled>🚀 Send to all contacts</button>
-          <button class="btn btn-danger" id="stop-btn" onclick="stopSending()" style="display:none">⏹ Stop sending</button>
+          <button class="btn btn-danger" id="stop-btn" onclick="stopSending()" style="display:none">⏹ Stop</button>
           <span id="sending-status" style="font-size:13px;color:var(--muted)"></span>
         </div>
-
         <div id="send-log" class="send-log" style="display:none"></div>
       </div>
     </div>
@@ -296,100 +259,47 @@ PreferHub</textarea>
 </div>
 
 <script>
-// ==================== CONFIG ====================
-const CLIENT_ID = 'a90f2aee-972f-47af-8b14-dfe47f12f99d';
-const TENANT_ID = 'f1205c48-5c43-48b0-94a8-56a51bf66aad';
-const AUTHORITY = `https://login.microsoftonline.com/${TENANT_ID}`;
-const SCOPES = ['Mail.Send', 'User.Read'];
-// ================================================
+// ============ CONFIG ============
+const CLIENT_ID  = 'a90f2aee-972f-47af-8b14-dfe47f12f99d';
+const TENANT_ID  = 'f1205c48-5c43-48b0-94a8-56a51bf66aad';
+const REDIRECT   = 'https://ronitp-0912.github.io/preferhub-email-sender/';
+const SCOPES     = 'Mail.Send User.Read';
+// ================================
 
 let contacts = [];
 let currentIdx = 0;
 let sentCount = 0;
 let failedCount = 0;
 let accessToken = null;
-let isSending = false;
 let stopFlag = false;
 
-const REDIRECT_URI = 'https://ronitp-0912.github.io/preferhub-email-sender/';
+// ========== AUTH (no library — pure OAuth2 token flow) ==========
 
-// ---- MSAL Auth ----
-let msalApp = null;
+function signIn() {
+  // Save any unsent state
+  sessionStorage.setItem('ph_subject', document.getElementById('subject').value);
+  sessionStorage.setItem('ph_body', document.getElementById('body').value);
 
-async function initMSAL() {
-  document.getElementById('signin-btn').disabled = true;
-  document.getElementById('signin-btn').textContent = '⏳ Loading...';
+  const state = Math.random().toString(36).substring(2);
+  sessionStorage.setItem('oauth_state', state);
 
-  // Wait for MSAL to load (up to 15 seconds)
-  let waited = 0;
-  while(typeof msal === 'undefined' && waited < 15000) {
-    await sleep(300);
-    waited += 300;
-  }
-
-  if(typeof msal === 'undefined') {
-    setAuthStatus('grey', 'Failed to load auth library — check your internet connection');
-    document.getElementById('signin-btn').textContent = '⚠️ Load failed — refresh page';
-    document.getElementById('signin-btn').disabled = false;
-    return;
-  }
-
-  msalApp = new msal.PublicClientApplication({
-    auth: { clientId: CLIENT_ID, authority: AUTHORITY, redirectUri: REDIRECT_URI },
-    cache: { cacheLocation: 'sessionStorage' }
+  const params = new URLSearchParams({
+    client_id: CLIENT_ID,
+    response_type: 'token',
+    redirect_uri: REDIRECT,
+    scope: SCOPES,
+    state: state,
+    response_mode: 'fragment',
+    nonce: Math.random().toString(36).substring(2)
   });
-  await msalApp.initialize();
 
-  // Re-enable sign in button
-  document.getElementById('signin-btn').disabled = false;
-  document.getElementById('signin-btn').textContent = '🔐 Sign in with Microsoft';
-
-  // Check if already signed in or returning from redirect
-  try {
-    const result = await msalApp.handleRedirectPromise();
-    if(result) {
-      accessToken = result.accessToken;
-      updateAuthUI(result.account);
-    } else {
-      const accounts = msalApp.getAllAccounts();
-      if(accounts.length > 0) {
-        try {
-          const silent = await msalApp.acquireTokenSilent({ scopes: SCOPES, account: accounts[0] });
-          accessToken = silent.accessToken;
-          updateAuthUI(accounts[0]);
-        } catch(e) { console.log('Silent token failed, user needs to sign in again'); }
-      }
-    }
-  } catch(e) { console.log('Auth init:', e); }
-}
-
-async function signIn() {
-  if(!msalApp) { alert('Still loading, please wait a moment and try again.'); return; }
-  try {
-    setAuthStatus('yellow', 'Signing in...');
-    let result;
-    try {
-      result = await msalApp.loginPopup({ scopes: SCOPES });
-    } catch(popupErr) {
-      // Popup blocked — fall back to redirect
-      if(popupErr.errorCode === 'popup_window_error' || popupErr.message.includes('popup')) {
-        setAuthStatus('yellow', 'Popup blocked — redirecting...');
-        await msalApp.loginRedirect({ scopes: SCOPES });
-        return;
-      }
-      throw popupErr;
-    }
-    const tokenResult = await msalApp.acquireTokenSilent({ scopes: SCOPES, account: result.account });
-    accessToken = tokenResult.accessToken;
-    updateAuthUI(result.account);
-  } catch(e) {
-    setAuthStatus('grey', 'Sign in failed — ' + (e.message||e));
-  }
+  window.location.href = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/authorize?${params}`;
 }
 
 function signOut() {
-  msalApp.logoutPopup();
   accessToken = null;
+  sessionStorage.removeItem('ph_token');
+  sessionStorage.removeItem('ph_user');
   setAuthStatus('grey', 'Not signed in');
   document.getElementById('signin-btn').style.display = '';
   document.getElementById('signout-btn').style.display = 'none';
@@ -397,8 +307,55 @@ function signOut() {
   document.getElementById('notauth-warn').style.display = '';
 }
 
-function updateAuthUI(account) {
-  setAuthStatus('green', `Signed in as ${account.username}`);
+function checkAuthCallback() {
+  // Check if we're returning from Microsoft login (token in URL hash)
+  const hash = window.location.hash.substring(1);
+  if(!hash) {
+    // Check sessionStorage for saved token
+    const saved = sessionStorage.getItem('ph_token');
+    const user  = sessionStorage.getItem('ph_user');
+    if(saved) { accessToken = saved; updateAuthUI(user || 'your account'); }
+    return;
+  }
+
+  const params = new URLSearchParams(hash);
+  const token = params.get('access_token');
+  const error = params.get('error_description') || params.get('error');
+  const state = params.get('state');
+
+  // Clear hash from URL
+  history.replaceState(null, '', window.location.pathname);
+
+  if(error) {
+    setAuthStatus('grey', 'Sign in failed: ' + error);
+    return;
+  }
+
+  if(token) {
+    accessToken = token;
+    sessionStorage.setItem('ph_token', token);
+
+    // Restore saved template
+    const savedSubj = sessionStorage.getItem('ph_subject');
+    const savedBody = sessionStorage.getItem('ph_body');
+    if(savedSubj) document.getElementById('subject').value = savedSubj;
+    if(savedBody) document.getElementById('body').value = savedBody;
+
+    // Get user info
+    fetch('https://graph.microsoft.com/v1.0/me', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    }).then(r => r.json()).then(u => {
+      const email = u.mail || u.userPrincipalName || 'your account';
+      sessionStorage.setItem('ph_user', email);
+      updateAuthUI(email);
+      // Auto-go to send page
+      goTo(3);
+    }).catch(() => updateAuthUI('your account'));
+  }
+}
+
+function updateAuthUI(userEmail) {
+  setAuthStatus('green', `Signed in as ${userEmail}`);
   document.getElementById('signin-btn').style.display = 'none';
   document.getElementById('signout-btn').style.display = '';
   document.getElementById('send-all-btn').disabled = false;
@@ -406,12 +363,12 @@ function updateAuthUI(account) {
 }
 
 function setAuthStatus(color, text) {
-  const dot = document.getElementById('auth-dot');
-  dot.className = 'dot dot-' + color;
+  document.getElementById('auth-dot').className = 'dot dot-' + color;
   document.getElementById('auth-text').textContent = text;
 }
 
-// ---- Send email via Graph API ----
+// ========== SEND VIA GRAPH API ==========
+
 async function sendEmailGraph(to, subject, body) {
   const res = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', {
     method: 'POST',
@@ -426,20 +383,24 @@ async function sendEmailGraph(to, subject, body) {
     })
   });
   if(!res.ok) {
-    const err = await res.json().catch(()=>({error:{message:res.statusText}}));
+    const err = await res.json().catch(() => ({ error: { message: res.statusText } }));
+    // Token expired — prompt re-login
+    if(res.status === 401) {
+      signOut();
+      alert('Session expired. Please sign in again.');
+      throw new Error('Session expired');
+    }
     throw new Error(err.error?.message || res.statusText);
   }
 }
 
-// ---- Send test ----
 async function sendTest() {
   if(!accessToken) { alert('Please sign in first.'); return; }
   if(!contacts.length) { alert('Please upload your CSV first.'); return; }
   const to = document.getElementById('test-email').value.trim();
   if(!to) { alert('Enter your manager\'s email.'); return; }
-  const idx = parseInt(document.getElementById('test-contact').value)||0;
-  const c = contacts[idx];
-  const {body, subj} = fillTemplate(c);
+  const idx = parseInt(document.getElementById('test-contact').value) || 0;
+  const { body, subj } = fillTemplate(contacts[idx]);
   const btn = document.getElementById('test-btn');
   btn.textContent = '⏳ Sending...'; btn.disabled = true;
   try {
@@ -454,24 +415,24 @@ async function sendTest() {
   }
 }
 
-// ---- Send all ----
 async function sendAll() {
   if(!accessToken) { alert('Please sign in first.'); return; }
   if(!contacts.length) { alert('Upload your CSV first.'); return; }
-  if(!confirm(`Send ${contacts.length} personalised emails from your Outlook account?\n\nThis cannot be undone. Make sure you tested first!`)) return;
+  if(!confirm(`Send ${contacts.length} personalised emails?\n\nMake sure you tested first!`)) return;
 
-  isSending = true; stopFlag = false;
+  stopFlag = false;
+  sentCount = 0; failedCount = 0;
   document.getElementById('send-all-btn').disabled = true;
   document.getElementById('stop-btn').style.display = '';
   document.getElementById('send-log').style.display = '';
-  const delay = parseInt(document.getElementById('send-delay').value)||1000;
+  const delay = parseInt(document.getElementById('send-delay').value) || 1000;
 
   addLog(`Starting — ${contacts.length} emails to send...`, 'info');
 
-  for(let i=0; i<contacts.length; i++) {
-    if(stopFlag) { addLog('⏹ Stopped by user.', 'info'); break; }
+  for(let i = 0; i < contacts.length; i++) {
+    if(stopFlag) { addLog('⏹ Stopped.', 'info'); break; }
     const c = contacts[i];
-    const {body, subj} = fillTemplate(c);
+    const { body, subj } = fillTemplate(c);
     const label = `${c['First Name']||''} ${c['Last Name']||''} <${c['Email']}>`;
     document.getElementById('sending-status').textContent = `Sending ${i+1}/${contacts.length}...`;
     try {
@@ -479,14 +440,14 @@ async function sendAll() {
       sentCount++;
       addLog(`✓ ${label}`, 'ok');
     } catch(e) {
+      if(e.message === 'Session expired') break;
       failedCount++;
       addLog(`✗ ${label} — ${e.message}`, 'err');
     }
     updateStats();
-    if(i < contacts.length-1) await sleep(delay);
+    if(i < contacts.length - 1) await sleep(delay);
   }
 
-  isSending = false;
   document.getElementById('send-all-btn').disabled = false;
   document.getElementById('stop-btn').style.display = 'none';
   document.getElementById('sending-status').textContent = `Done! ${sentCount} sent, ${failedCount} failed.`;
@@ -495,7 +456,6 @@ async function sendAll() {
 
 function stopSending() { stopFlag = true; }
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
 function addLog(msg, type) {
   const log = document.getElementById('send-log');
   const line = document.createElement('div');
@@ -505,7 +465,7 @@ function addLog(msg, type) {
   log.scrollTop = log.scrollHeight;
 }
 
-// ---- CSV Loading ----
+// ========== CSV ==========
 function loadCSV(input) {
   const file = input.files[0];
   if(!file) return;
@@ -513,45 +473,48 @@ function loadCSV(input) {
   reader.onload = e => {
     const rows = e.target.result.trim().split('\n');
     const rawHeaders = parseCSVRow(rows[0]);
-    const normalize = h => h.toLowerCase().replace(/[\s_\-\.]+/g,'');
-    const findCol = (...cands) => {
-      for(const c of cands) { const m = rawHeaders.find(h => normalize(h)===normalize(c)); if(m) return m; }
-      for(const c of cands) { const m = rawHeaders.find(h => normalize(h).includes(normalize(c))||normalize(c).includes(normalize(h))); if(m) return m; }
+    const norm = h => h.toLowerCase().replace(/[\s_\-\.]+/g, '');
+    const find = (...cands) => {
+      for(const c of cands) { const m = rawHeaders.find(h => norm(h) === norm(c)); if(m) return m; }
+      for(const c of cands) { const m = rawHeaders.find(h => norm(h).includes(norm(c)) || norm(c).includes(norm(h))); if(m) return m; }
       return null;
     };
-    const colMap = {
-      'First Name': findCol('First Name','firstname','first','fname'),
-      'Last Name':  findCol('Last Name','lastname','last','lname','surname'),
-      'Email':      findCol('Email','email address','emailaddress','mail'),
-      'Company Name': findCol('Company Name','company','organisation','organization','org'),
-      'Title':      findCol('Title','designation','job title','jobtitle','position','role'),
-      'City':       findCol('City','location'),
+    const map = {
+      'First Name':   find('First Name','firstname','first','fname'),
+      'Last Name':    find('Last Name','lastname','last','lname','surname'),
+      'Email':        find('Email','email address','emailaddress','mail'),
+      'Company Name': find('Company Name','company','organisation','organization','org'),
+      'Title':        find('Title','designation','job title','jobtitle','position','role'),
+      'City':         find('City','location'),
     };
     contacts = [];
-    for(let i=1; i<rows.length; i++) {
+    for(let i = 1; i < rows.length; i++) {
       if(!rows[i].trim()) continue;
       const vals = parseCSVRow(rows[i]);
-      const raw = {}; rawHeaders.forEach((h,j) => raw[h.trim()]=(vals[j]||'').trim());
+      const raw = {}; rawHeaders.forEach((h, j) => raw[h.trim()] = (vals[j]||'').trim());
       const row = {};
-      for(const [k,v] of Object.entries(colMap)) row[k] = v ? (raw[v]||'') : '';
+      for(const [k, v] of Object.entries(map)) row[k] = v ? (raw[v]||'') : '';
       if(row['Email'] && row['Email'].includes('@')) contacts.push(row);
     }
     document.getElementById('upload-zone').classList.add('loaded');
     document.getElementById('upload-title').textContent = `✓ ${file.name}`;
-    document.getElementById('upload-hint').textContent = `${contacts.length} contacts with valid emails loaded`;
-    document.getElementById('upload-result').style.display='block';
-    document.getElementById('upload-msg').textContent = `✓ ${contacts.length} contacts loaded successfully.`;
+    document.getElementById('upload-hint').textContent = `${contacts.length} contacts loaded`;
+    document.getElementById('upload-result').style.display = 'block';
+    document.getElementById('upload-msg').textContent = `✓ ${contacts.length} contacts with valid emails loaded.`;
     document.getElementById('preview-table').innerHTML = `<table style="width:100%;font-size:13px;border-collapse:collapse">
       <thead><tr style="color:var(--muted);border-bottom:1px solid var(--border)">
-        <th style="text-align:left;padding:6px 8px">Name</th><th style="text-align:left;padding:6px 8px">Title</th>
-        <th style="text-align:left;padding:6px 8px">Company</th><th style="text-align:left;padding:6px 8px">Email</th>
-      </tr></thead><tbody>${contacts.slice(0,5).map(c=>`<tr style="border-bottom:1px solid var(--border)">
+        <th style="text-align:left;padding:6px 8px">Name</th>
+        <th style="text-align:left;padding:6px 8px">Title</th>
+        <th style="text-align:left;padding:6px 8px">Company</th>
+        <th style="text-align:left;padding:6px 8px">Email</th>
+      </tr></thead><tbody>${contacts.slice(0,5).map(c => `<tr style="border-bottom:1px solid var(--border)">
         <td style="padding:7px 8px">${c['First Name']} ${c['Last Name']}</td>
         <td style="padding:7px 8px;color:var(--muted)">${(c['Title']||'').substring(0,28)}</td>
         <td style="padding:7px 8px;color:var(--muted)">${(c['Company Name']||'').substring(0,22)}</td>
         <td style="padding:7px 8px;color:var(--info)">${c['Email']}</td>
       </tr>`).join('')}</tbody></table>`;
-    populateTestSelect();
+    document.getElementById('test-contact').innerHTML = contacts.slice(0,15).map((c,i) =>
+      `<option value="${i}">${c['First Name']} ${c['Last Name']} — ${c['Company Name']||''}</option>`).join('');
     document.getElementById('ready-count').textContent = contacts.length;
     updateStats();
   };
@@ -559,51 +522,51 @@ function loadCSV(input) {
 }
 
 function parseCSVRow(row) {
-  const result=[]; let cur=''; let inQ=false;
+  const result = []; let cur = ''; let inQ = false;
   for(const ch of row) {
-    if(ch==='"') inQ=!inQ;
-    else if(ch===',' && !inQ) { result.push(cur); cur=''; }
-    else cur+=ch;
+    if(ch === '"') inQ = !inQ;
+    else if(ch === ',' && !inQ) { result.push(cur); cur = ''; }
+    else cur += ch;
   }
   result.push(cur); return result;
 }
 
 function fillTemplate(c) {
-  const rep = s => s.replace(/{{First Name}}/g,c['First Name']||'').replace(/{{Last Name}}/g,c['Last Name']||'')
-    .replace(/{{Title}}/g,c['Title']||'').replace(/{{Company Name}}/g,c['Company Name']||'').replace(/{{City}}/g,c['City']||'');
+  const rep = s => s
+    .replace(/{{First Name}}/g, c['First Name']||'')
+    .replace(/{{Last Name}}/g,  c['Last Name']||'')
+    .replace(/{{Title}}/g,      c['Title']||'')
+    .replace(/{{Company Name}}/g, c['Company Name']||'')
+    .replace(/{{City}}/g,       c['City']||'');
   return { body: rep(document.getElementById('body').value), subj: rep(document.getElementById('subject').value) };
-}
-
-function populateTestSelect() {
-  document.getElementById('test-contact').innerHTML = contacts.slice(0,15).map((c,i)=>
-    `<option value="${i}">${c['First Name']} ${c['Last Name']} — ${c['Company Name']||''}</option>`).join('');
 }
 
 function updateStats() {
   document.getElementById('stat-total').textContent = contacts.length;
   document.getElementById('stat-sent').textContent = sentCount;
   document.getElementById('stat-failed').textContent = failedCount;
-  const pct = contacts.length ? Math.round(sentCount/contacts.length*100) : 0;
-  document.getElementById('progress-fill').style.width = pct+'%';
+  const pct = contacts.length ? Math.round(sentCount / contacts.length * 100) : 0;
+  document.getElementById('progress-fill').style.width = pct + '%';
 }
 
 function insertPH(ph) {
   const ta = document.getElementById('body');
   const s = ta.selectionStart, e = ta.selectionEnd;
-  ta.value = ta.value.substring(0,s)+ph+ta.value.substring(e);
-  ta.selectionStart = ta.selectionEnd = s+ph.length; ta.focus();
+  ta.value = ta.value.substring(0, s) + ph + ta.value.substring(e);
+  ta.selectionStart = ta.selectionEnd = s + ph.length; ta.focus();
 }
 
 function goTo(n) {
-  document.querySelectorAll('.page').forEach((p,i)=>p.classList.toggle('active',i===n));
-  document.querySelectorAll('.step-btn').forEach((b,i)=>b.classList.toggle('active',i===n));
-  if(n===2) updatePreview();
+  document.querySelectorAll('.page').forEach((p, i) => p.classList.toggle('active', i === n));
+  document.querySelectorAll('.step-btn').forEach((b, i) => b.classList.toggle('active', i === n));
+  if(n === 2) updatePreview();
+  if(n === 3) document.getElementById('ready-count').textContent = contacts.length;
 }
 
 function updatePreview() {
   if(!contacts.length) return;
   const c = contacts[currentIdx];
-  const {body, subj} = fillTemplate(c);
+  const { body, subj } = fillTemplate(c);
   document.getElementById('prev-name').textContent = `${c['First Name']||''} ${c['Last Name']||''}`;
   document.getElementById('prev-addr').textContent = c['Email']||'';
   document.getElementById('prev-subj').textContent = subj;
@@ -611,11 +574,11 @@ function updatePreview() {
   document.getElementById('prev-counter').textContent = `${currentIdx+1} / ${contacts.length}`;
 }
 
-function nextC() { if(currentIdx<contacts.length-1){currentIdx++;updatePreview();} }
-function prevC() { if(currentIdx>0){currentIdx--;updatePreview();} }
+function nextC() { if(currentIdx < contacts.length-1) { currentIdx++; updatePreview(); } }
+function prevC() { if(currentIdx > 0) { currentIdx--; updatePreview(); } }
 
-// Init
-initMSAL();
+// Run on load
+checkAuthCallback();
 </script>
 </body>
 </html>
