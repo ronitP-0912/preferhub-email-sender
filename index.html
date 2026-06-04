@@ -4,7 +4,30 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>PreferHub — Bulk Email Sender</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-authentication-library/2.38.3/msal-browser.min.js"></script>
+<script>
+// Load MSAL from multiple CDNs with fallback
+(function() {
+  const cdns = [
+    'https://cdnjs.cloudflare.com/ajax/libs/microsoft-authentication-library/2.38.3/msal-browser.min.js',
+    'https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js',
+    'https://unpkg.com/@azure/msal-browser@2.38.3/lib/msal-browser.min.js',
+    'https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js'
+  ];
+  let idx = 0;
+  function tryLoad() {
+    if(idx >= cdns.length) {
+      document.getElementById('msal-error').style.display='block';
+      return;
+    }
+    const s = document.createElement('script');
+    s.src = cdns[idx++];
+    s.onload = () => { window._msalLoaded = true; };
+    s.onerror = tryLoad;
+    document.head.appendChild(s);
+  }
+  tryLoad();
+})();
+</script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -204,7 +227,10 @@ PreferHub</textarea>
 
       <!-- Auth -->
       <div class="auth-box">
-        <div class="card-label" style="margin-bottom:12px">Step 1 — Sign in with your Outlook account</div>
+        <div class="alert alert-danger" id="msal-error" style="display:none">
+        ⚠️ Auth library blocked by your network. Try opening this page on a different network (mobile hotspot) or ask your IT team to whitelist <strong>alcdn.msauth.net</strong>
+      </div>
+      <div class="card-label" style="margin-bottom:12px">Step 1 — Sign in with your Outlook account</div>
         <div class="auth-status" id="auth-status">
           <div class="dot dot-grey" id="auth-dot"></div>
           <span id="auth-text">Not signed in</span>
@@ -291,9 +317,22 @@ const REDIRECT_URI = 'https://ronitp-0912.github.io/preferhub-email-sender/';
 let msalApp = null;
 
 async function initMSAL() {
-  // Disable sign in button until MSAL is ready
   document.getElementById('signin-btn').disabled = true;
   document.getElementById('signin-btn').textContent = '⏳ Loading...';
+
+  // Wait for MSAL to load (up to 15 seconds)
+  let waited = 0;
+  while(typeof msal === 'undefined' && waited < 15000) {
+    await sleep(300);
+    waited += 300;
+  }
+
+  if(typeof msal === 'undefined') {
+    setAuthStatus('grey', 'Failed to load auth library — check your internet connection');
+    document.getElementById('signin-btn').textContent = '⚠️ Load failed — refresh page';
+    document.getElementById('signin-btn').disabled = false;
+    return;
+  }
 
   msalApp = new msal.PublicClientApplication({
     auth: { clientId: CLIENT_ID, authority: AUTHORITY, redirectUri: REDIRECT_URI },
