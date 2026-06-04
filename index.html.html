@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PreferHub — Bulk Email Sender</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-authentication-library/2.38.3/msal-browser.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f0f0f; --surface: #181818; --surface2: #222222;
+    --border: #2e2e2e; --border2: #3a3a3a; --text: #f0ede8; --muted: #888;
+    --accent: #c9a96e; --accent2: #e8c98a; --success: #4caf7d;
+    --danger: #e05c5c; --warning: #e0a84a; --info: #5b9cf6;
+    --font: 'DM Sans', sans-serif; --mono: 'DM Mono', monospace;
+    --radius: 10px; --radius-lg: 16px;
+  }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 15px; line-height: 1.6; min-height: 100vh; }
+  .app { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+  .sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 2rem 1.5rem; display: flex; flex-direction: column; gap: 2rem; }
+  .logo-name { font-size: 18px; font-weight: 600; color: var(--accent); letter-spacing: -0.3px; }
+  .logo-sub { font-size: 11px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; }
+  .steps-nav { display: flex; flex-direction: column; gap: 4px; }
+  .step-btn { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--radius); border: none; background: transparent; color: var(--muted); font-family: var(--font); font-size: 14px; cursor: pointer; text-align: left; transition: all 0.15s; }
+  .step-btn:hover { color: var(--text); background: var(--surface2); }
+  .step-btn.active { color: var(--accent); background: rgba(201,169,110,0.1); font-weight: 500; }
+  .step-num { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid currentColor; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+  .step-btn.done .step-num { background: var(--success); border-color: var(--success); color: #fff; }
+  .stats-box { margin-top: auto; background: var(--surface2); border-radius: var(--radius); padding: 1rem; display: flex; flex-direction: column; gap: 8px; }
+  .stat-row { display: flex; justify-content: space-between; font-size: 13px; }
+  .stat-label { color: var(--muted); }
+  .stat-val { font-weight: 500; font-family: var(--mono); color: var(--accent); }
+  .progress-bar-wrap { background: var(--border); border-radius: 99px; height: 4px; margin-top: 4px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width 0.4s; }
+  .main { padding: 2.5rem 3rem; overflow-y: auto; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .page-title { font-size: 24px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 4px; }
+  .page-desc { color: var(--muted); font-size: 14px; margin-bottom: 2rem; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.25rem; }
+  .card-label { font-size: 12px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  input[type=text], input[type=email], input[type=number], textarea, select {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--text); font-family: var(--font);
+    font-size: 14px; padding: 10px 14px; outline: none; transition: border-color 0.15s;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 220px; line-height: 1.7; font-family: var(--mono); font-size: 13px; }
+  .upload-zone { border: 1.5px dashed var(--border2); border-radius: var(--radius-lg); padding: 2.5rem; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; }
+  .upload-zone:hover { border-color: var(--accent); background: rgba(201,169,110,0.04); }
+  .upload-zone.loaded { border-color: var(--success); border-style: solid; background: rgba(76,175,125,0.05); }
+  .upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 12px; }
+  .chip { font-size: 12px; padding: 4px 10px; border-radius: 20px; background: rgba(201,169,110,0.12); color: var(--accent2); font-family: var(--mono); cursor: pointer; border: 1px solid rgba(201,169,110,0.2); transition: all 0.15s; }
+  .chip:hover { background: rgba(201,169,110,0.25); }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: var(--radius); border: none; font-family: var(--font); font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+  .btn-gold { background: var(--accent); color: #0f0f0f; }
+  .btn-gold:hover { background: var(--accent2); }
+  .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border2); }
+  .btn-outline:hover { background: var(--surface2); border-color: var(--accent); }
+  .btn-success { background: var(--success); color: #fff; }
+  .btn-success:hover { opacity: 0.85; }
+  .btn-success:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 1.25rem; align-items: center; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .alert { padding: 12px 16px; border-radius: var(--radius); font-size: 13px; margin-bottom: 1rem; display: flex; align-items: flex-start; gap: 8px; }
+  .alert-warning { background: rgba(224,168,74,0.12); border: 1px solid rgba(224,168,74,0.3); color: var(--warning); }
+  .alert-success { background: rgba(76,175,125,0.12); border: 1px solid rgba(76,175,125,0.3); color: var(--success); }
+  .alert-info { background: rgba(91,156,246,0.12); border: 1px solid rgba(91,156,246,0.3); color: var(--info); }
+  .alert-danger { background: rgba(224,92,92,0.12); border: 1px solid rgba(224,92,92,0.3); color: var(--danger); }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+  .preview-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .nav-arrow { width: 32px; height: 32px; border-radius: var(--radius); border: 1px solid var(--border2); background: transparent; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: all 0.15s; }
+  .nav-arrow:hover { background: var(--surface2); border-color: var(--accent); }
+  .nav-counter { font-size: 13px; color: var(--muted); font-family: var(--mono); min-width: 60px; text-align: center; }
+  .preview-body { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; font-size: 13px; line-height: 1.8; white-space: pre-wrap; font-family: var(--mono); max-height: 340px; overflow-y: auto; }
+  .send-log { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; max-height: 260px; overflow-y: auto; font-family: var(--mono); font-size: 12px; margin-top: 1rem; }
+  .log-line { padding: 3px 0; border-bottom: 1px solid var(--border); }
+  .log-ok { color: var(--success); }
+  .log-err { color: var(--danger); }
+  .log-info { color: var(--muted); }
+  .auth-box { background: rgba(201,169,110,0.05); border: 1px solid rgba(201,169,110,0.2); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.25rem; }
+  .auth-status { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .dot-grey { background: var(--muted); }
+  .dot-green { background: var(--success); }
+  .dot-yellow { background: var(--warning); animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div>
+      <div class="logo-name">PreferHub</div>
+      <div class="logo-sub">Bulk Email Sender</div>
+    </div>
+    <nav class="steps-nav">
+      <button class="step-btn active" onclick="goTo(0)" id="nav-0"><span class="step-num">1</span> Compose</button>
+      <button class="step-btn" onclick="goTo(1)" id="nav-1"><span class="step-num">2</span> Upload Contacts</button>
+      <button class="step-btn" onclick="goTo(2)" id="nav-2"><span class="step-num">3</span> Preview</button>
+      <button class="step-btn" onclick="goTo(3)" id="nav-3"><span class="step-num">4</span> Send</button>
+    </nav>
+    <div class="stats-box">
+      <div style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Status</div>
+      <div class="stat-row"><span class="stat-label">Contacts</span><span class="stat-val" id="stat-total">0</span></div>
+      <div class="stat-row"><span class="stat-label">Sent</span><span class="stat-val" id="stat-sent">0</span></div>
+      <div class="stat-row"><span class="stat-label">Failed</span><span class="stat-val" id="stat-failed" style="color:var(--danger)">0</span></div>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- PAGE 1: COMPOSE -->
+    <div class="page active" id="page-0">
+      <div class="page-title">Compose your email</div>
+      <div class="page-desc">Write once. Placeholders get replaced with each contact's real data automatically.</div>
+      <div class="card">
+        <div class="card-label">Subject line</div>
+        <input type="text" id="subject" value="Connecting at Ascend 26 – PreferHub" />
+      </div>
+      <div class="card">
+        <div class="card-label">Email body</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:6px">Click a placeholder to insert it:</div>
+        <div class="chips">
+          <span class="chip" onclick="insertPH('{{First Name}}')">{{First Name}}</span>
+          <span class="chip" onclick="insertPH('{{Last Name}}')">{{Last Name}}</span>
+          <span class="chip" onclick="insertPH('{{Title}}')">{{Title}}</span>
+          <span class="chip" onclick="insertPH('{{Company Name}}')">{{Company Name}}</span>
+          <span class="chip" onclick="insertPH('{{City}}')">{{City}}</span>
+        </div>
+        <textarea id="body">Hi {{First Name}},
+
+Hope you're looking forward to Ascend 26 in Orlando!
+
+I'm Ronit from PreferHub — a boutique tech advisory firm with Big 4 DNA. We work with organizations to help them get more out of their Oracle Cloud HCM, ERP, EPM and NetSuite investments — whether that's through optimization, transformation, or AI-led automation.
+
+My colleague SRC will be attending Ascend 26 and would love to connect with you in person. No agenda — just a chance to meet, exchange ideas, and see if there's anything we can explore together.
+
+Would you be open to a quick catch-up at the event?
+
+Warm regards,
+Ronit
+PreferHub</textarea>
+      </div>
+      <div class="btn-row"><button class="btn btn-gold" onclick="goTo(1)">Next: Upload Contacts →</button></div>
+    </div>
+
+    <!-- PAGE 2: UPLOAD -->
+    <div class="page" id="page-1">
+      <div class="page-title">Upload contacts</div>
+      <div class="page-desc">Works with any CSV — Apollo exports, Excel exports, custom files. Column names are auto-detected.</div>
+      <div class="upload-zone" id="upload-zone">
+        <input type="file" accept=".csv" onchange="loadCSV(this)" />
+        <div style="font-size:32px;margin-bottom:10px">📂</div>
+        <div style="font-weight:500;margin-bottom:4px" id="upload-title">Drop your CSV here or click to browse</div>
+        <div style="font-size:13px;color:var(--muted)" id="upload-hint">Supports Apollo export or any custom CSV</div>
+      </div>
+      <div id="upload-result" style="display:none;margin-top:1rem">
+        <div class="alert alert-success" id="upload-msg"></div>
+        <div class="card"><div class="card-label">First 5 contacts preview</div><div id="preview-table"></div></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-outline" onclick="goTo(0)">← Back</button>
+        <button class="btn btn-gold" onclick="goTo(2)">Next: Preview Emails →</button>
+      </div>
+    </div>
+
+    <!-- PAGE 3: PREVIEW -->
+    <div class="page" id="page-2">
+      <div class="page-title">Preview emails</div>
+      <div class="page-desc">Browse each personalised email before sending anything.</div>
+      <div class="card">
+        <div class="preview-nav">
+          <div>
+            <div style="font-weight:500" id="prev-name">—</div>
+            <div style="font-size:13px;color:var(--info)" id="prev-addr">—</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="nav-arrow" onclick="prevC()">‹</button>
+            <span class="nav-counter" id="prev-counter">— / —</span>
+            <button class="nav-arrow" onclick="nextC()">›</button>
+          </div>
+        </div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Subject: <span style="color:var(--text);font-weight:500" id="prev-subj">—</span></div>
+        <div class="preview-body" id="prev-body">Load your CSV first.</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-outline" onclick="goTo(1)">← Back</button>
+        <button class="btn btn-gold" onclick="goTo(3)">Looks good → Go to Send</button>
+      </div>
+    </div>
+
+    <!-- PAGE 4: SEND -->
+    <div class="page" id="page-3">
+      <div class="page-title">Send emails</div>
+      <div class="page-desc">Sign in with your Outlook account, test first, then send to everyone automatically.</div>
+
+      <!-- Auth -->
+      <div class="auth-box">
+        <div class="card-label" style="margin-bottom:12px">Step 1 — Sign in with your Outlook account</div>
+        <div class="auth-status" id="auth-status">
+          <div class="dot dot-grey" id="auth-dot"></div>
+          <span id="auth-text">Not signed in</span>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-gold" id="signin-btn" onclick="signIn()">🔐 Sign in with Microsoft</button>
+          <button class="btn btn-outline" id="signout-btn" onclick="signOut()" style="display:none">Sign out</button>
+        </div>
+      </div>
+
+      <!-- Test -->
+      <div class="card">
+        <div class="card-label">Step 2 — Test send to your manager</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:1rem">Sends one real email so your manager can approve before bulk sending.</div>
+        <div class="two-col">
+          <div>
+            <div class="card-label">Manager's email</div>
+            <input type="email" id="test-email" placeholder="manager@preferhub.com" />
+          </div>
+          <div>
+            <div class="card-label">Preview as this contact</div>
+            <select id="test-contact"><option>— load CSV first —</option></select>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-outline" id="test-btn" onclick="sendTest()">📨 Send test email</button>
+        </div>
+      </div>
+
+      <hr class="divider" />
+
+      <!-- Bulk send -->
+      <div class="card">
+        <div class="card-label">Step 3 — Send to all contacts</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:1rem">Sends one personalised email per contact automatically. No tabs, no clicking.</div>
+
+        <div class="alert alert-warning" id="notauth-warn">⚠️ Please sign in with Microsoft first before sending.</div>
+
+        <div class="two-col" style="margin-bottom:1rem">
+          <div>
+            <div class="card-label">Delay between emails (ms)</div>
+            <input type="number" id="send-delay" value="1000" min="500" max="5000" />
+            <div style="font-size:12px;color:var(--muted);margin-top:4px">1000ms = 1 second gap. Recommended: 1000–2000</div>
+          </div>
+          <div>
+            <div class="card-label">Ready to send</div>
+            <div style="font-size:28px;font-weight:600;color:var(--accent);font-family:var(--mono)" id="ready-count">0</div>
+            <div style="font-size:12px;color:var(--muted)">contacts with email</div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-success" id="send-all-btn" onclick="sendAll()" disabled>🚀 Send to all contacts</button>
+          <button class="btn btn-danger" id="stop-btn" onclick="stopSending()" style="display:none">⏹ Stop sending</button>
+          <span id="sending-status" style="font-size:13px;color:var(--muted)"></span>
+        </div>
+
+        <div id="send-log" class="send-log" style="display:none"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ==================== CONFIG ====================
+const CLIENT_ID = 'a90f2aee-972f-47af-8b14-dfe47f12f99d';
+const TENANT_ID = 'f1205c48-5c43-48b0-94a8-56a51bf66aad';
+const AUTHORITY = `https://login.microsoftonline.com/${TENANT_ID}`;
+const SCOPES = ['Mail.Send', 'User.Read'];
+// ================================================
+
+let contacts = [];
+let currentIdx = 0;
+let sentCount = 0;
+let failedCount = 0;
+let accessToken = null;
+let isSending = false;
+let stopFlag = false;
+
+const REDIRECT_URI = window.location.href.split('?')[0].split('#')[0];
+
+// ---- MSAL Auth ----
+let msalApp = null;
+
+async function initMSAL() {
+  // Disable sign in button until MSAL is ready
+  document.getElementById('signin-btn').disabled = true;
+  document.getElementById('signin-btn').textContent = '⏳ Loading...';
+
+  msalApp = new msal.PublicClientApplication({
+    auth: { clientId: CLIENT_ID, authority: AUTHORITY, redirectUri: REDIRECT_URI },
+    cache: { cacheLocation: 'sessionStorage' }
+  });
+  await msalApp.initialize();
+
+  // Re-enable sign in button
+  document.getElementById('signin-btn').disabled = false;
+  document.getElementById('signin-btn').textContent = '🔐 Sign in with Microsoft';
+
+  // Check if already signed in or returning from redirect
+  try {
+    const result = await msalApp.handleRedirectPromise();
+    if(result) {
+      accessToken = result.accessToken;
+      updateAuthUI(result.account);
+    } else {
+      const accounts = msalApp.getAllAccounts();
+      if(accounts.length > 0) {
+        try {
+          const silent = await msalApp.acquireTokenSilent({ scopes: SCOPES, account: accounts[0] });
+          accessToken = silent.accessToken;
+          updateAuthUI(accounts[0]);
+        } catch(e) { console.log('Silent token failed, user needs to sign in again'); }
+      }
+    }
+  } catch(e) { console.log('Auth init:', e); }
+}
+
+async function signIn() {
+  if(!msalApp) { alert('Still loading, please wait a moment and try again.'); return; }
+  try {
+    setAuthStatus('yellow', 'Signing in...');
+    let result;
+    try {
+      result = await msalApp.loginPopup({ scopes: SCOPES });
+    } catch(popupErr) {
+      // Popup blocked — fall back to redirect
+      if(popupErr.errorCode === 'popup_window_error' || popupErr.message.includes('popup')) {
+        setAuthStatus('yellow', 'Popup blocked — redirecting...');
+        await msalApp.loginRedirect({ scopes: SCOPES });
+        return;
+      }
+      throw popupErr;
+    }
+    const tokenResult = await msalApp.acquireTokenSilent({ scopes: SCOPES, account: result.account });
+    accessToken = tokenResult.accessToken;
+    updateAuthUI(result.account);
+  } catch(e) {
+    setAuthStatus('grey', 'Sign in failed — ' + (e.message||e));
+  }
+}
+
+function signOut() {
+  msalApp.logoutPopup();
+  accessToken = null;
+  setAuthStatus('grey', 'Not signed in');
+  document.getElementById('signin-btn').style.display = '';
+  document.getElementById('signout-btn').style.display = 'none';
+  document.getElementById('send-all-btn').disabled = true;
+  document.getElementById('notauth-warn').style.display = '';
+}
+
+function updateAuthUI(account) {
+  setAuthStatus('green', `Signed in as ${account.username}`);
+  document.getElementById('signin-btn').style.display = 'none';
+  document.getElementById('signout-btn').style.display = '';
+  document.getElementById('send-all-btn').disabled = false;
+  document.getElementById('notauth-warn').style.display = 'none';
+}
+
+function setAuthStatus(color, text) {
+  const dot = document.getElementById('auth-dot');
+  dot.className = 'dot dot-' + color;
+  document.getElementById('auth-text').textContent = text;
+}
+
+// ---- Send email via Graph API ----
+async function sendEmailGraph(to, subject, body) {
+  const res = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message: {
+        subject,
+        body: { contentType: 'Text', content: body },
+        toRecipients: [{ emailAddress: { address: to } }]
+      },
+      saveToSentItems: true
+    })
+  });
+  if(!res.ok) {
+    const err = await res.json().catch(()=>({error:{message:res.statusText}}));
+    throw new Error(err.error?.message || res.statusText);
+  }
+}
+
+// ---- Send test ----
+async function sendTest() {
+  if(!accessToken) { alert('Please sign in first.'); return; }
+  if(!contacts.length) { alert('Please upload your CSV first.'); return; }
+  const to = document.getElementById('test-email').value.trim();
+  if(!to) { alert('Enter your manager\'s email.'); return; }
+  const idx = parseInt(document.getElementById('test-contact').value)||0;
+  const c = contacts[idx];
+  const {body, subj} = fillTemplate(c);
+  const btn = document.getElementById('test-btn');
+  btn.textContent = '⏳ Sending...'; btn.disabled = true;
+  try {
+    await sendEmailGraph(to, '[TEST] ' + subj, body);
+    btn.textContent = '✅ Test sent!';
+    addLog(`TEST → ${to}`, 'ok');
+    setTimeout(() => { btn.textContent = '📨 Send test email'; btn.disabled = false; }, 3000);
+  } catch(e) {
+    btn.textContent = '❌ Failed'; btn.disabled = false;
+    addLog(`TEST FAILED: ${e.message}`, 'err');
+    alert('Test failed: ' + e.message);
+  }
+}
+
+// ---- Send all ----
+async function sendAll() {
+  if(!accessToken) { alert('Please sign in first.'); return; }
+  if(!contacts.length) { alert('Upload your CSV first.'); return; }
+  if(!confirm(`Send ${contacts.length} personalised emails from your Outlook account?\n\nThis cannot be undone. Make sure you tested first!`)) return;
+
+  isSending = true; stopFlag = false;
+  document.getElementById('send-all-btn').disabled = true;
+  document.getElementById('stop-btn').style.display = '';
+  document.getElementById('send-log').style.display = '';
+  const delay = parseInt(document.getElementById('send-delay').value)||1000;
+
+  addLog(`Starting — ${contacts.length} emails to send...`, 'info');
+
+  for(let i=0; i<contacts.length; i++) {
+    if(stopFlag) { addLog('⏹ Stopped by user.', 'info'); break; }
+    const c = contacts[i];
+    const {body, subj} = fillTemplate(c);
+    const label = `${c['First Name']||''} ${c['Last Name']||''} <${c['Email']}>`;
+    document.getElementById('sending-status').textContent = `Sending ${i+1}/${contacts.length}...`;
+    try {
+      await sendEmailGraph(c['Email'], subj, body);
+      sentCount++;
+      addLog(`✓ ${label}`, 'ok');
+    } catch(e) {
+      failedCount++;
+      addLog(`✗ ${label} — ${e.message}`, 'err');
+    }
+    updateStats();
+    if(i < contacts.length-1) await sleep(delay);
+  }
+
+  isSending = false;
+  document.getElementById('send-all-btn').disabled = false;
+  document.getElementById('stop-btn').style.display = 'none';
+  document.getElementById('sending-status').textContent = `Done! ${sentCount} sent, ${failedCount} failed.`;
+  addLog(`━━ Complete: ${sentCount} sent, ${failedCount} failed ━━`, 'info');
+}
+
+function stopSending() { stopFlag = true; }
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function addLog(msg, type) {
+  const log = document.getElementById('send-log');
+  const line = document.createElement('div');
+  line.className = `log-line log-${type}`;
+  line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+}
+
+// ---- CSV Loading ----
+function loadCSV(input) {
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const rows = e.target.result.trim().split('\n');
+    const rawHeaders = parseCSVRow(rows[0]);
+    const normalize = h => h.toLowerCase().replace(/[\s_\-\.]+/g,'');
+    const findCol = (...cands) => {
+      for(const c of cands) { const m = rawHeaders.find(h => normalize(h)===normalize(c)); if(m) return m; }
+      for(const c of cands) { const m = rawHeaders.find(h => normalize(h).includes(normalize(c))||normalize(c).includes(normalize(h))); if(m) return m; }
+      return null;
+    };
+    const colMap = {
+      'First Name': findCol('First Name','firstname','first','fname'),
+      'Last Name':  findCol('Last Name','lastname','last','lname','surname'),
+      'Email':      findCol('Email','email address','emailaddress','mail'),
+      'Company Name': findCol('Company Name','company','organisation','organization','org'),
+      'Title':      findCol('Title','designation','job title','jobtitle','position','role'),
+      'City':       findCol('City','location'),
+    };
+    contacts = [];
+    for(let i=1; i<rows.length; i++) {
+      if(!rows[i].trim()) continue;
+      const vals = parseCSVRow(rows[i]);
+      const raw = {}; rawHeaders.forEach((h,j) => raw[h.trim()]=(vals[j]||'').trim());
+      const row = {};
+      for(const [k,v] of Object.entries(colMap)) row[k] = v ? (raw[v]||'') : '';
+      if(row['Email'] && row['Email'].includes('@')) contacts.push(row);
+    }
+    document.getElementById('upload-zone').classList.add('loaded');
+    document.getElementById('upload-title').textContent = `✓ ${file.name}`;
+    document.getElementById('upload-hint').textContent = `${contacts.length} contacts with valid emails loaded`;
+    document.getElementById('upload-result').style.display='block';
+    document.getElementById('upload-msg').textContent = `✓ ${contacts.length} contacts loaded successfully.`;
+    document.getElementById('preview-table').innerHTML = `<table style="width:100%;font-size:13px;border-collapse:collapse">
+      <thead><tr style="color:var(--muted);border-bottom:1px solid var(--border)">
+        <th style="text-align:left;padding:6px 8px">Name</th><th style="text-align:left;padding:6px 8px">Title</th>
+        <th style="text-align:left;padding:6px 8px">Company</th><th style="text-align:left;padding:6px 8px">Email</th>
+      </tr></thead><tbody>${contacts.slice(0,5).map(c=>`<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:7px 8px">${c['First Name']} ${c['Last Name']}</td>
+        <td style="padding:7px 8px;color:var(--muted)">${(c['Title']||'').substring(0,28)}</td>
+        <td style="padding:7px 8px;color:var(--muted)">${(c['Company Name']||'').substring(0,22)}</td>
+        <td style="padding:7px 8px;color:var(--info)">${c['Email']}</td>
+      </tr>`).join('')}</tbody></table>`;
+    populateTestSelect();
+    document.getElementById('ready-count').textContent = contacts.length;
+    updateStats();
+  };
+  reader.readAsText(file);
+}
+
+function parseCSVRow(row) {
+  const result=[]; let cur=''; let inQ=false;
+  for(const ch of row) {
+    if(ch==='"') inQ=!inQ;
+    else if(ch===',' && !inQ) { result.push(cur); cur=''; }
+    else cur+=ch;
+  }
+  result.push(cur); return result;
+}
+
+function fillTemplate(c) {
+  const rep = s => s.replace(/{{First Name}}/g,c['First Name']||'').replace(/{{Last Name}}/g,c['Last Name']||'')
+    .replace(/{{Title}}/g,c['Title']||'').replace(/{{Company Name}}/g,c['Company Name']||'').replace(/{{City}}/g,c['City']||'');
+  return { body: rep(document.getElementById('body').value), subj: rep(document.getElementById('subject').value) };
+}
+
+function populateTestSelect() {
+  document.getElementById('test-contact').innerHTML = contacts.slice(0,15).map((c,i)=>
+    `<option value="${i}">${c['First Name']} ${c['Last Name']} — ${c['Company Name']||''}</option>`).join('');
+}
+
+function updateStats() {
+  document.getElementById('stat-total').textContent = contacts.length;
+  document.getElementById('stat-sent').textContent = sentCount;
+  document.getElementById('stat-failed').textContent = failedCount;
+  const pct = contacts.length ? Math.round(sentCount/contacts.length*100) : 0;
+  document.getElementById('progress-fill').style.width = pct+'%';
+}
+
+function insertPH(ph) {
+  const ta = document.getElementById('body');
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  ta.value = ta.value.substring(0,s)+ph+ta.value.substring(e);
+  ta.selectionStart = ta.selectionEnd = s+ph.length; ta.focus();
+}
+
+function goTo(n) {
+  document.querySelectorAll('.page').forEach((p,i)=>p.classList.toggle('active',i===n));
+  document.querySelectorAll('.step-btn').forEach((b,i)=>b.classList.toggle('active',i===n));
+  if(n===2) updatePreview();
+}
+
+function updatePreview() {
+  if(!contacts.length) return;
+  const c = contacts[currentIdx];
+  const {body, subj} = fillTemplate(c);
+  document.getElementById('prev-name').textContent = `${c['First Name']||''} ${c['Last Name']||''}`;
+  document.getElementById('prev-addr').textContent = c['Email']||'';
+  document.getElementById('prev-subj').textContent = subj;
+  document.getElementById('prev-body').textContent = body;
+  document.getElementById('prev-counter').textContent = `${currentIdx+1} / ${contacts.length}`;
+}
+
+function nextC() { if(currentIdx<contacts.length-1){currentIdx++;updatePreview();} }
+function prevC() { if(currentIdx>0){currentIdx--;updatePreview();} }
+
+// Init
+initMSAL();
+</script>
+</body>
+</html>
