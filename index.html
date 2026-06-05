@@ -154,7 +154,7 @@
         </div>
         <div class="editor-wrap">
           <div class="editor-toolbar">
-            <select onchange="execCmd('fontName',this.value);this.value=''">
+            <select id="body-font-sel" onchange="execCmd('fontName',this.value); updateFontLabel('body-font-sel', this.value);">
               <option value="">Font</option>
               <option value="Arial">Arial</option>
               <option value="Calibri">Calibri</option>
@@ -164,24 +164,29 @@
               <option value="Trebuchet MS">Trebuchet MS</option>
               <option value="Verdana">Verdana</option>
             </select>
-            <select onchange="execCmd('fontSize',this.value);this.value=''">
+            <select id="body-size-sel" onchange="execCmd('fontSize',this.value); updateSizeLabel('body-size-sel', this.value);">
               <option value="">Size</option>
-              <option value="2">Small</option>
-              <option value="3">Normal</option>
-              <option value="4">Large</option>
-              <option value="5">X-Large</option>
+              <option value="2">Small (10)</option>
+              <option value="3">Normal (12)</option>
+              <option value="4">Large (14)</option>
+              <option value="5">X-Large (18)</option>
+              <option value="6">XX-Large (24)</option>
             </select>
             <div class="sep"></div>
             <button onclick="execCmd('bold')" title="Bold"><b>B</b></button>
             <button onclick="execCmd('italic')" title="Italic"><i>I</i></button>
             <button onclick="execCmd('underline')" title="Underline"><u>U</u></button>
             <div class="sep"></div>
-            <button onclick="execCmd('justifyLeft')">⬅</button>
-            <button onclick="execCmd('justifyCenter')">☰</button>
-            <button onclick="execCmd('justifyRight')">➡</button>
+            <button onclick="execCmd('justifyLeft')" title="Align left">⬅</button>
+            <button onclick="execCmd('justifyCenter')" title="Center">☰</button>
+            <button onclick="execCmd('justifyRight')" title="Align right">➡</button>
+            <div class="sep"></div>
+            <button onclick="insertLineBreak()" title="Line break (Shift+Enter)">↵ Line</button>
+            <button onclick="insertParagraphBreak()" title="Paragraph break">¶ Para</button>
             <div class="sep"></div>
             <button onclick="pickColor('body')" title="Text color">🎨</button>
-            <input type="color" id="body-color" value="#c9a96e" style="width:0;height:0;opacity:0;position:absolute" onchange="applyColor('body',this.value)" />
+            <input type="color" id="body-color" value="#000000" style="width:0;height:0;opacity:0;position:absolute" onchange="applyColor('body',this.value)" />
+            <button onclick="insertHyperlink('body')" title="Insert hyperlink">🔗 Link</button>
             <div class="sep"></div>
             <button onclick="execCmd('removeFormat')" style="font-size:11px">Clear</button>
           </div>
@@ -193,7 +198,7 @@
         <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Automatically appended to every email.</div>
         <div class="editor-wrap">
           <div class="editor-toolbar">
-            <select onchange="execCmdSig('fontName',this.value);this.value=''">
+            <select id="sig-font-sel" onchange="execCmdSig('fontName',this.value); updateFontLabel('sig-font-sel', this.value);">
               <option value="">Font</option>
               <option value="Arial">Arial</option>
               <option value="Calibri">Calibri</option>
@@ -202,11 +207,12 @@
               <option value="Times New Roman">Times New Roman</option>
               <option value="Verdana">Verdana</option>
             </select>
-            <select onchange="execCmdSig('fontSize',this.value);this.value=''">
+            <select id="sig-size-sel" onchange="execCmdSig('fontSize',this.value); updateSizeLabel('sig-size-sel', this.value);">
               <option value="">Size</option>
               <option value="2">Small</option>
               <option value="3">Normal</option>
               <option value="4">Large</option>
+              <option value="5">X-Large</option>
             </select>
             <div class="sep"></div>
             <button onclick="execCmdSig('bold')"><b>B</b></button>
@@ -215,6 +221,9 @@
             <div class="sep"></div>
             <button onclick="pickColor('sig')" title="Text color">🎨</button>
             <input type="color" id="sig-color" value="#c9a96e" style="width:0;height:0;opacity:0;position:absolute" onchange="applyColor('sig',this.value)" />
+            <button onclick="insertHyperlink('sig')" title="Insert hyperlink">🔗 Link</button>
+            <button onclick="document.getElementById('sig-img-upload').click()" title="Insert image or QR">🖼 Image/QR</button>
+            <input type="file" id="sig-img-upload" accept="image/*" style="display:none" onchange="insertImageToSig(this)" />
           </div>
           <div class="rich-editor sig-editor" id="sig-editor" contenteditable="true" style="min-height:90px">
             <span style="color:#c9a96e;font-weight:600">Ronit Paul</span><br>
@@ -344,11 +353,69 @@ let accessToken = null, stopFlag = false;
 // ---- Rich text formatting ----
 function execCmd(cmd, val) { document.getElementById('body-editor').focus(); document.execCommand(cmd, false, val||null); }
 function execCmdSig(cmd, val) { document.getElementById('sig-editor').focus(); document.execCommand(cmd, false, val||null); }
+
+function updateFontLabel(selId, val) {
+  const sel = document.getElementById(selId);
+  // Update the displayed option text to show selected font
+  for(let i=0; i<sel.options.length; i++) {
+    if(sel.options[i].value === val) {
+      sel.options[0].text = val; // update placeholder to show current font
+      sel.selectedIndex = 0;
+      break;
+    }
+  }
+}
+
+function updateSizeLabel(selId, val) {
+  const labels = {'2':'Small','3':'Normal','4':'Large','5':'X-Large','6':'XX-Large'};
+  const sel = document.getElementById(selId);
+  sel.options[0].text = labels[val] || 'Size';
+  sel.selectedIndex = 0;
+}
+
 function pickColor(target) { document.getElementById(target+'-color').click(); }
 function applyColor(target, val) {
   if(target==='body') { document.getElementById('body-editor').focus(); document.execCommand('foreColor',false,val); }
   else { document.getElementById('sig-editor').focus(); document.execCommand('foreColor',false,val); }
 }
+
+function insertLineBreak() {
+  document.getElementById('body-editor').focus();
+  document.execCommand('insertHTML', false, '<br>');
+}
+
+function insertParagraphBreak() {
+  document.getElementById('body-editor').focus();
+  document.execCommand('insertHTML', false, '<br><br>');
+}
+
+function insertHyperlink(target) {
+  const url = prompt('Enter URL (e.g. https://preferhub.com):');
+  if(!url) return;
+  const text = prompt('Enter link text (leave blank to use URL):') || url;
+  const html = `<a href="${url}" style="color:#c9a96e">${text}</a>`;
+  if(target==='body') {
+    document.getElementById('body-editor').focus();
+    document.execCommand('insertHTML', false, html);
+  } else {
+    document.getElementById('sig-editor').focus();
+    document.execCommand('insertHTML', false, html);
+  }
+}
+
+function insertImageToSig(input) {
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const width = prompt('Image width in pixels (e.g. 100 for QR code, 200 for logo):', '100') || '100';
+    const html = `<img src="${e.target.result}" width="${width}" style="display:block;margin-top:6px" alt="signature image">`;
+    document.getElementById('sig-editor').focus();
+    document.execCommand('insertHTML', false, html);
+  };
+  reader.readAsDataURL(file);
+  input.value = ''; // reset so same file can be re-uploaded
+}
+
 function insertPH(ph) {
   const editor = document.getElementById('body-editor');
   editor.focus();
@@ -455,10 +522,10 @@ function buildEmailHTML(c) {
     .replace(/\{\{Title\}\}/g,        c['Title']||'')
     .replace(/\{\{Company Name\}\}/g, c['Company Name']||'')
     .replace(/\{\{City\}\}/g,         c['City']||'');
-  return `<div style="font-family:Tahoma,Arial,sans-serif;font-size:14px;line-height:1.8;color:#222;max-width:600px">
-    ${filled}
-    <br><hr style="border:none;border-top:1px solid #ddd;margin:16px 0">
-    ${sigHTML}
+  return `<div style="font-family:Tahoma,Arial,sans-serif;font-size:14px;line-height:1.6;color:#222;max-width:600px">
+    <div style="margin-bottom:8px">${filled}</div>
+    <hr style="border:none;border-top:1px solid #ddd;margin:10px 0 8px 0">
+    <div>${sigHTML}</div>
   </div>`;
 }
 
