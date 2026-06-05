@@ -630,7 +630,7 @@ function loadCSV(input) {
   const file=input.files[0]; if(!file) return;
   const reader=new FileReader();
   reader.onload=e=>{
-    const rows=e.target.result.trim().split('\n');
+    const rows=e.target.result.trim().replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
     const rawH=parseCSVRow(rows[0]);
     const norm=h=>h.toLowerCase().replace(/[\s_\-\.]+/g,'');
     const find=(...c)=>{
@@ -638,13 +638,15 @@ function loadCSV(input) {
       for(const x of c){const m=rawH.find(h=>norm(h).includes(norm(x))||norm(x).includes(norm(h)));if(m)return m;}
       return null;
     };
+    // For Apollo CSVs, 'Email' column is exact — find it precisely first
+    const emailCol = rawH.find(h=>h.trim()==='Email') || find('Email','email address','emailaddress','mail');
     const map={
       'First Name':   find('First Name','firstname','first','fname'),
       'Last Name':    find('Last Name','lastname','last','lname','surname'),
-      'Email':        find('Email','email address','emailaddress','mail'),
-      'Company Name': find('Company Name','company','organisation','organization','org'),
-      'Title':        find('Title','designation','job title','jobtitle','position','role'),
-      'City':         find('City','location'),
+      'Email':        emailCol,
+      'Company Name': rawH.find(h=>h.trim()==='Company Name') || find('Company Name','company','organisation','organization','org'),
+      'Title':        rawH.find(h=>h.trim()==='Title') || find('Title','designation','job title','jobtitle','position','role'),
+      'City':         rawH.find(h=>h.trim()==='City') || find('City','location'),
     };
     contacts=[];
     for(let i=1;i<rows.length;i++){
@@ -679,9 +681,25 @@ function loadCSV(input) {
 }
 
 function parseCSVRow(row) {
-  const r=[]; let c=''; let q=false;
-  for(const ch of row){if(ch==='"')q=!q;else if(ch===','&&!q){r.push(c);c='';}else c+=ch;}
-  r.push(c); return r;
+  const result = [];
+  let cur = '';
+  let inQuotes = false;
+  let i = 0;
+  while(i < row.length) {
+    const ch = row[i];
+    if(ch === '"') {
+      if(inQuotes && row[i+1] === '"') { cur += '"'; i += 2; continue; } // escaped quote
+      inQuotes = !inQuotes;
+    } else if(ch === ',' && !inQuotes) {
+      result.push(cur.trim());
+      cur = '';
+    } else {
+      cur += ch;
+    }
+    i++;
+  }
+  result.push(cur.trim());
+  return result;
 }
 
 function updateStats() {
